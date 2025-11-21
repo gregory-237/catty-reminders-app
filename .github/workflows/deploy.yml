@@ -3,7 +3,8 @@ name: CD Deployment
 on:
   release:
     types: [published]
-
+  push:
+    branches: [main, master]
 jobs:
   deploy:
     runs-on: ubuntu-latest
