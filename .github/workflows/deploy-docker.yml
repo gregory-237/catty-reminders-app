@@ -1,0 +1,39 @@
+name: CD Docker Deployment
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy with Docker
+      uses: appleboy/ssh-action@v1
+      with:
+        host: course.prafdin.ru
+        username: gregory
+        port: 2465
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Логин в GitHub Container Registry
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          
+          # Останавливаем старый контейнер
+          docker stop catty-reminders || true
+          docker rm catty-reminders || true
+          
+          # Pull нового образа
+          docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          
+          # Запускаем новый контейнер
+          docker run -d \
+            --name catty-reminders \
+            -p 8181:8181 \
+            --restart unless-stopped \
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          
+          echo "🚀 Docker deployment completed!"
