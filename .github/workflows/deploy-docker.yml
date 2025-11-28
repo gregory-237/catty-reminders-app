@@ -19,20 +19,15 @@ jobs:
         port: 2465
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Логин в GitHub Container Registry
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
-          # Останавливаем старый контейнер
           docker stop catty-reminders || true
           docker rm catty-reminders || true
           
-          # 🔥 ОСТАНАВЛИВАЕМ СТАРОЕ ПРИЛОЖЕНИЕ
-          sudo systemctl stop catty-reminders || true
+          systemctl stop catty-reminders || true
           
-          # Pull нового образа
           docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
           
-          # Запускаем новый контейнер
           docker run -d \
             --name catty-reminders \
             -p 8181:8181 \
