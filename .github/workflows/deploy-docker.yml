@@ -9,30 +9,60 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy with Docker
-      uses: appleboy/ssh-action@v1
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
       with:
-        host: course.prafdin.ru
-        username: gregory
-        port: 2465
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy Docker container
+      run: |
+        ssh -p 2465 -o StrictHostKeyChecking=no gregory@course.prafdin.ru '
+          set -e
+          echo "Starting Docker container deployment..."
+          
+          # Логинимся в GitHub Container Registry
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
-          docker stop catty-reminders || true
-          docker rm catty-reminders || true
-          
-          systemctl stop catty-reminders || true
-          
+          echo "Pulling latest Docker image..."
           docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
           
+          echo "Checking existing containers..."
+          docker ps -a
+          
+          echo "Stopping and removing existing container..."
+          docker rm -f catty-reminders 2>/dev/null || echo "No container to remove"
+          
+          echo "Starting new container..."
           docker run -d \
             --name catty-reminders \
-            -p 8181:8181 \
             --restart unless-stopped \
+            -p 8181:8181 \
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
           
-          echo "🚀 Docker deployment completed!"
-        
+          echo "Waiting for container to start..."
+          sleep 10
+          
+          echo "=== DIAGNOSTICS ==="
+          echo "1. Docker containers:"
+          docker ps -a
+          
+          echo "2. Container logs:"
+          docker logs catty-reminders
+          
+          echo "3. Port listening check:"
+          if ss -tulpn | grep -q 8181; then
+            echo "Port 8181 is listening"
+          else
+            echo "Port 8181 is NOT listening"
+          fi
+          
+          echo "4. Local health check:"
+          if curl -f http://localhost:8181 > /dev/null 2>&1; then
+            echo "Local health check PASSED"
+          else
+            echo "Local health check FAILED"
+          fi
+          
+          echo "Deployment completed successfully!"
+          echo "App is available at: http://app.petrov.course.prafdin.ru"
+        '
