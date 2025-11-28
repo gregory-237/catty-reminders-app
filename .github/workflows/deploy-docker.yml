@@ -26,6 +26,9 @@ jobs:
           docker stop catty-reminders || true
           docker rm catty-reminders || true
           
+          # 🔥 ОСТАНАВЛИВАЕМ СТАРОЕ ПРИЛОЖЕНИЕ
+          sudo systemctl stop catty-reminders || true
+          
           # Pull нового образа
           docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
           
@@ -37,3 +40,4 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
           
           echo "🚀 Docker deployment completed!"
+        
