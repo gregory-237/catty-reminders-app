@@ -10,7 +10,7 @@ jobs:
     
     steps:
     - name: Wait for CI to build image
-      run: sleep 30
+      run: sleep 180
     - name: Setup SSH
       uses: webfactory/ssh-agent@v0.8.0
       with:
