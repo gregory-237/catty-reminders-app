@@ -1,0 +1,72 @@
+name: CD Pipeline - Deploy with Docker Compose
+
+on:
+  workflow_run:
+    workflows: ["CI Tests and Docker Build"]
+    types:
+      - completed
+    branches: [multicontainers]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy with Docker Compose
+        run: |
+          echo "Starting Docker Compose deployment..."
+          
+          # Копируем docker-compose.yml на сервер
+          ssh -p 2465 -o StrictHostKeyChecking=no gregory@course.prafdin.ru '
+            mkdir -p /home/gregory/catty-compose
+            cd /home/gregory/catty-compose
+          '
+          
+          scp -P 2465 -o StrictHostKeyChecking=no docker-compose.yml gregory@course.prafdin.ru:/home/gregory/catty-compose/
+          
+          # Запускаем деплой
+          ssh -p 2465 -o StrictHostKeyChecking=no gregory@course.prafdin.ru '
+            cd /home/gregory/catty-compose
+            
+            echo "=== Authentication ==="
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "=== Stopping existing stack ==="
+            docker compose down --remove-orphans || echo "No stack to stop"
+            
+            echo "=== Pulling Latest Images ==="
+            docker compose pull --quiet
+            
+            echo "=== Starting Stack ==="
+            docker compose up -d --remove-orphans
+            
+            echo "=== Waiting for services ==="
+            sleep 15
+            
+            echo "=== Checking Services ==="
+            docker compose ps --all
+            
+            echo "=== Health Check ==="
+            if curl -s -f http://localhost:8181/ > /dev/null 2>&1; then
+              echo "✅ Application is healthy"
+              echo "🌐 App is available at: http://app.petrov.course.prafdin.ru"
+            else
+              echo "❌ Application health check failed"
+              echo "=== Application Logs ==="
+              docker compose logs app --tail=20
+              echo "=== Database Logs ==="  
+              docker compose logs db --tail=10
+              exit 1
+            fi
+            
+            echo "🚀 Deployment completed successfully!"
+          '
