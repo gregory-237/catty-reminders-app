@@ -16,7 +16,7 @@ services:
       - catty-network
 
   app:
-    image: ghcr.io/gregory-237/catty-reminders-app:latest  # ← Твой образ
+    image: ghcr.io/gregory-237/catty-reminders-app:latest
     container_name: catty-app
     depends_on:
       - db
