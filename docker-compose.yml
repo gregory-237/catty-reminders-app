@@ -1,0 +1,41 @@
+version: '3.8'
+
+name: catty-reminders
+
+services:
+  db:
+    image: mysql:5.7.36
+    container_name: catty-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mypass
+      MYSQL_DATABASE: catty_reminders
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - catty-network
+
+  app:
+    image: ghcr.io/gregory-237/catty-reminders-app:latest  # ← Твой образ
+    container_name: catty-app
+    depends_on:
+      - db
+    restart: unless-stopped
+    ports:
+      - "8181:8181"
+    environment:
+      SECRET_KEY: "Cats are awesome!"
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: mypass
+      DB_NAME: catty_reminders
+    networks:
+      - catty-network
+
+volumes:
+  db-data:
+
+networks:
+  catty-network:
+    driver: bridge
