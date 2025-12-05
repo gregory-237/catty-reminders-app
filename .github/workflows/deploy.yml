@@ -36,19 +36,19 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             echo "=== Stopping existing stack ==="
-            docker compose down --remove-orphans || echo "No stack to stop"
+            docker compose down || echo "No stack to stop"
             
             echo "=== Pulling Latest Images ==="
-            docker compose pull --quiet
+            docker compose pull
             
             echo "=== Starting Stack ==="
-            docker compose up -d --remove-orphans
+            docker compose up -d
             
             echo "=== Waiting for services ==="
             sleep 15
             
             echo "=== Checking Services ==="
-            docker compose ps --all
+            docker compose ps
             
             echo "=== Health Check ==="
             if curl -s -f http://localhost:8181/ > /dev/null 2>&1; then
